@@ -12,27 +12,70 @@ export default async function CommercialPage() {
   const supabase = await createClient();
   const orgPlan = await getOrgPlan(supabase);
 
-  // Gate: unbilled revenue tracking is Pro+
   const canSeeUnbilled = orgPlan?.canUse('unbilled_revenue_tracking') ?? false;
 
+  // 1. Projects + clients only (no join ambiguity)
   const { data: projects } = await supabase
     .from('projects')
-    .select('*, clients(name), billing(amount, status), collections(amount)')
+    .select('*, clients(name)')
     .eq('archived', false)
     .order('contract_value', { ascending: false });
 
+  const projectIds = (projects ?? []).map((p: any) => p.id);
+
+  // 2. Fetch billing per project (single query, grouped in code)
+  const billingByProject = new Map<
+    string,
+    { amount: number; status: string }[]
+  >();
+
+  // 3. Fetch collections per project (single query, grouped in code)
+  const collectionsByProject = new Map<string, number>();
+
+  if (projectIds.length > 0) {
+    const { data: billings } = await supabase
+      .from('billing')
+      .select('project_id, amount, status')
+      .in('project_id', projectIds);
+
+    for (const b of billings ?? []) {
+      const arr = billingByProject.get(b.project_id) ?? [];
+      arr.push({ amount: Number(b.amount), status: b.status });
+      billingByProject.set(b.project_id, arr);
+    }
+
+    const { data: collections } = await supabase
+      .from('collections')
+      .select('project_id, amount')
+      .in('project_id', projectIds);
+
+    for (const c of collections ?? []) {
+      const sum = collectionsByProject.get(c.project_id) ?? 0;
+      collectionsByProject.set(c.project_id, sum + Number(c.amount));
+    }
+  }
+
   const rows = (projects ?? []).map((p: any) => {
-    const billings = p.billing ?? [];
-    const collections = p.collections ?? [];
-    const billed = billings.reduce((s: number, b: any) => s + Number(b.amount), 0);
-    const collected = collections.reduce((s: number, c: any) => s + Number(c.amount), 0);
+    const billings = billingByProject.get(p.id) ?? [];
+    const collected = collectionsByProject.get(p.id) ?? 0;
+    const billed = billings.reduce((s, b) => s + b.amount, 0);
     const overdue = billings
-      .filter((b: any) => b.status === 'overdue')
-      .reduce((s: number, b: any) => s + Number(b.amount), 0);
+      .filter((b) => b.status === 'overdue')
+      .reduce((s, b) => s + b.amount, 0);
     const unbilled = Math.max(billed - collected, 0);
     const efficiency = billed > 0 ? (collected / billed) * 100 : 0;
-    const clientName = Array.isArray(p.clients) ? p.clients[0]?.name : p.clients?.name;
-    return { ...p, billed, collected, overdue, unbilled, efficiency, clientName };
+    const clientName = Array.isArray(p.clients)
+      ? p.clients[0]?.name
+      : p.clients?.name;
+    return {
+      ...p,
+      billed,
+      collected,
+      overdue,
+      unbilled,
+      efficiency,
+      clientName,
+    };
   });
 
   const totals = rows.reduce(
@@ -46,29 +89,37 @@ export default async function CommercialPage() {
     { contract: 0, billed: 0, collected: 0, overdue: 0, unbilled: 0 }
   );
 
-  const overallEfficiency = totals.billed > 0 ? (totals.collected / totals.billed) * 100 : 0;
+  const overallEfficiency =
+    totals.billed > 0 ? (totals.collected / totals.billed) * 100 : 0;
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Commercial Visibility</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Commercial Visibility
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Execution vs Billing vs Collection across portfolio
         </p>
       </div>
 
+      {/* KPI row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-5 bg-card/50">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-2">
             <FileText className="h-3 w-3" /> Total Contract
           </div>
-          <div className="text-2xl font-semibold">{formatMoney(totals.contract, 'INR')}</div>
+          <div className="text-2xl font-semibold">
+            {formatMoney(totals.contract, 'INR')}
+          </div>
         </Card>
         <Card className="p-5 bg-card/50">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-2">
             <TrendingUp className="h-3 w-3" /> Billed
           </div>
-          <div className="text-2xl font-semibold">{formatMoney(totals.billed, 'INR')}</div>
+          <div className="text-2xl font-semibold">
+            {formatMoney(totals.billed, 'INR')}
+          </div>
           <div className="text-[10px] text-muted-foreground font-mono mt-1">
             {pct(totals.contract > 0 ? (totals.billed / totals.contract) * 100 : 0)} of contract
           </div>
@@ -85,7 +136,6 @@ export default async function CommercialPage() {
           </div>
         </Card>
 
-        {/* Unbilled + Overdue — Pro+ only */}
         {canSeeUnbilled ? (
           <Card className="p-5 bg-card/50 border-amber-500/30">
             <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-amber-400 uppercase mb-2">
@@ -142,9 +192,15 @@ export default async function CommercialPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-t border-border hover:bg-accent/30">
+                <tr
+                  key={r.id}
+                  className="border-t border-border hover:bg-accent/30"
+                >
                   <td className="p-3 font-mono text-xs">
-                    <Link href={`/projects/${r.id}`} className="text-brand hover:underline">
+                    <Link
+                      href={`/projects/${r.id}`}
+                      className="text-brand hover:underline"
+                    >
                       {r.code}
                     </Link>
                     <div className="text-muted-foreground text-[10px] truncate max-w-[200px]">
@@ -158,15 +214,15 @@ export default async function CommercialPage() {
                     {formatMoney(Number(r.contract_value), r.currency)}
                   </td>
                   <td className="p-3 text-right font-mono text-xs">
-                    {formatMoney(r.billed, r.currency)}
+                    {r.billed > 0 ? formatMoney(r.billed, r.currency) : '—'}
                   </td>
                   <td className="p-3 text-right font-mono text-xs text-emerald-400">
-                    {formatMoney(r.collected, r.currency)}
+                    {r.collected > 0 ? formatMoney(r.collected, r.currency) : '—'}
                   </td>
                   {canSeeUnbilled && (
                     <>
                       <td className="p-3 text-right font-mono text-xs text-amber-400">
-                        {formatMoney(r.unbilled, r.currency)}
+                        {r.unbilled > 0 ? formatMoney(r.unbilled, r.currency) : '—'}
                       </td>
                       <td className="p-3 text-right font-mono text-xs text-red-400">
                         {r.overdue > 0 ? formatMoney(r.overdue, r.currency) : '—'}
@@ -179,6 +235,35 @@ export default async function CommercialPage() {
                 </tr>
               ))}
             </tbody>
+            <tfoot className="bg-muted/20 border-t-2 border-border">
+              <tr className="text-xs font-medium">
+                <td colSpan={2} className="p-3 text-right text-muted-foreground">
+                  Totals
+                </td>
+                <td className="p-3 text-right font-mono text-xs whitespace-nowrap">
+                  {formatMoney(totals.contract, 'INR')}
+                </td>
+                <td className="p-3 text-right font-mono text-xs whitespace-nowrap">
+                  {formatMoney(totals.billed, 'INR')}
+                </td>
+                <td className="p-3 text-right font-mono text-xs whitespace-nowrap text-emerald-400">
+                  {formatMoney(totals.collected, 'INR')}
+                </td>
+                {canSeeUnbilled && (
+                  <>
+                    <td className="p-3 text-right font-mono text-xs whitespace-nowrap text-amber-400">
+                      {formatMoney(totals.unbilled, 'INR')}
+                    </td>
+                    <td className="p-3 text-right font-mono text-xs whitespace-nowrap text-red-400">
+                      {formatMoney(totals.overdue, 'INR')}
+                    </td>
+                  </>
+                )}
+                <td className="p-3 text-right font-mono text-xs whitespace-nowrap font-semibold">
+                  {pct(overallEfficiency)}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </Card>

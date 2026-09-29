@@ -4,6 +4,16 @@ import { listProjects } from '@/lib/queries/projects';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function csvCell(value: string | number | null | undefined): string {
+  const s = String(value ?? '').replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+
+function shortDate(iso: string | null): string {
+  if (!iso) return '';
+  return iso.slice(0, 10); // YYYY-MM-DD
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -35,27 +45,26 @@ export async function GET(req: Request) {
 
     for (const r of rows) {
       const cells = [
-        r.code,
-        r.name,
-        r.client_name ?? '',
-        r.current_stage,
-        r.health,
-        String(r.contract_value),
-        r.currency,
-        r.start_date ?? '',
-        r.end_date ?? '',
-        r.updated_at,
-      ].map((cell) => {
-        const s = String(cell).replace(/"/g, '""');
-        return /[",\n]/.test(s) ? `"${s}"` : s;
-      });
+        csvCell(r.code),
+        csvCell(r.name),
+        csvCell(r.client_name ?? ''),
+        csvCell(r.current_stage),
+        csvCell(r.health),
+        // Format as integer string, no scientific notation
+        csvCell(Math.round(r.contract_value).toString()),
+        csvCell(r.currency),
+        csvCell(shortDate(r.start_date)),
+        csvCell(shortDate(r.end_date)),
+        csvCell(shortDate(r.updated_at)),
+      ];
       lines.push(cells.join(','));
     }
 
     const csv = lines.join('\n');
     const stamp = new Date().toISOString().slice(0, 10);
 
-    return new NextResponse(csv, {
+    return new NextResponse('\uFEFF' + csv, {
+      // BOM prefix helps Excel open UTF-8 correctly
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="synlumex-projects-${stamp}.csv"`,

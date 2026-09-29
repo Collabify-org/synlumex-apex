@@ -8,6 +8,7 @@ import { STAGES, type HealthStatus } from '@/lib/types';
 import { formatMoney, shortDate } from '@/lib/format';
 import { ArrowLeft } from 'lucide-react';
 import { BoqTab } from './boq-tab';
+import { getOrgPlan } from '@/lib/plan';
 import { RiskPanel } from './risk-panel';
 
 export const dynamic = 'force-dynamic';
@@ -57,9 +58,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     .order('created_at', { ascending: false });
 
   // AI quota for this org (used + limit)
-  const aiLimitInfo = await canRunAI(supabase);
-  const aiUsage = aiLimitInfo.used;
-  const aiLimit = aiLimitInfo.limit;
+const orgPlan = await getOrgPlan(supabase);
+const canUseRisk = orgPlan?.canUse('predictive_risk') ?? false;
+
+const aiLimitInfo = await canRunAI(supabase);
+const aiUsage = aiLimitInfo.used;
+const aiLimit = aiLimitInfo.limit;
 
   const totalBilled = (billings ?? []).reduce((s, b) => s + Number(b.amount), 0);
   const totalCollected = (collections ?? []).reduce((s, c) => s + Number(c.amount), 0);
@@ -228,9 +232,10 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           />
         </div>
         <RiskPanel
-          projectId={project.id}
-          quota={{ used: aiUsage, limit: aiLimit }}
-        />
+  projectId={project.id}
+  quota={{ used: aiUsage, limit: aiLimit }}
+  canUse={canUseRisk}
+/>
       </div>
     </div>
   );

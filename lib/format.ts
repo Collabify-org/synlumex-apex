@@ -11,10 +11,10 @@ export function formatMoney(amount: number, currency: CurrencyCode = 'INR'): str
     if (Math.abs(amount) >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`;
     return `$${amount.toLocaleString('en-US')}`;
   }
-  if (currency === 'SAR') {
-    if (Math.abs(amount) >= 1_000_000) return `﷼${(amount / 1_000_000).toFixed(2)}M`;
-    if (Math.abs(amount) >= 1_000) return `﷼${(amount / 1_000).toFixed(1)}K`;
-    return `﷼${amount.toLocaleString('en-US')}`;
+    if (currency === 'SAR') {
+    if (Math.abs(amount) >= 1_000_000) return `SAR ${(amount / 1_000_000).toFixed(2)}M`;
+    if (Math.abs(amount) >= 1_000) return `SAR ${(amount / 1_000).toFixed(1)}K`;
+    return `SAR ${amount.toLocaleString('en-US')}`;
   }
   return amount.toString();
 }

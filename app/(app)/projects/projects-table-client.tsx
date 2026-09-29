@@ -272,7 +272,11 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
         </div>
       )}
 
-      {/* Table */}
+        {/* Card view (early return) */}
+      {view === 'card' && <ProjectCardGrid rows={pageRows} />}
+
+      {/* Table view */}
+      {view === 'table' && (
       <Card className="bg-card/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

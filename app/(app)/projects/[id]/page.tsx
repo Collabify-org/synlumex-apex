@@ -151,15 +151,16 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="lg:col-span-2">
-          <BoqTab
-            projectId={project.id}
-            currency={project.currency}
-            initialItems={(boqItems ?? []) as any}
-          />
-        </div>
-        <RiskPanel projectId={project.id} />
-      </div>
-    </div>
+  <div className="lg:col-span-2">
+    <BoqTab
+      projectId={project.id}
+      currency={project.currency}
+      initialItems={(boqItems ?? []) as any}
+      quota={{ used: aiUsage, limit: aiLimit }}
+    />
+  </div>
+  <RiskPanel projectId={project.id} quota={{ used: aiUsage, limit: aiLimit }} />
+</div>
+</div>
   );
 }

@@ -1,27 +1,96 @@
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
-import { timeAgo } from '@/lib/format';
-import type { ExceptionSeverity, ExceptionStatus } from '@/lib/types';
+import { ExceptionsList } from './exceptions-list';
 
 export const dynamic = 'force-dynamic';
 
-const sevVariant: Record<ExceptionSeverity, 'red' | 'amber' | 'outline' | 'secondary'> = {
-  critical: 'red', high: 'amber', medium: 'outline', low: 'secondary'
-};
-
 export default async function ExceptionsPage() {
   const supabase = await createClient();
+
+  // Exceptions + project + assignee
   const { data: exceptions } = await supabase
     .from('exceptions')
-    .select('*, projects(code, name, currency)')
-    .eq('status', 'open')
-    .order('severity', { ascending: true })
+    .select('*, projects(code, name), assignee:profiles!exceptions_assigned_to_fkey(id, full_name)')
     .order('created_at', { ascending: false });
 
-  const rows = exceptions ?? [];
+  // Team members for assignment
+  const { data: teamMembers } = await supabase
+    .from('profiles')
+    .select('id, full_name, email');
+
+  // All events for these exceptions
+  const exceptionIds = (exceptions ?? []).map((e: any) => e.id);
+  let events: any[] = [];
+  if (exceptionIds.length > 0) {
+    const { data: rawEvents } = await supabase
+      .from('exception_events')
+      .select('id, exception_id, event_type, actor_id, note, created_at')
+      .in('exception_id', exceptionIds)
+      .order('created_at', { ascending: false });
+
+    // Load actor names
+    const actorIds = Array.from(
+      new Set((rawEvents ?? []).map((e: any) => e.actor_id).filter(Boolean))
+    );
+    let actorMap = new Map<string, string>();
+    if (actorIds.length > 0) {
+      const { data: actors } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', actorIds);
+      for (const a of actors ?? []) {
+        actorMap.set(a.id, a.full_name ?? a.email ?? 'Unknown');
+      }
+    }
+
+    events = (rawEvents ?? []).map((e: any) => ({
+      ...e,
+      actor_name: e.actor_id ? actorMap.get(e.actor_id) ?? null : null,
+    }));
+  }
+
+  // Group events by exception
+  const eventsByException: Record<string, any[]> = {};
+  for (const e of events) {
+    if (!eventsByException[e.exception_id]) eventsByException[e.exception_id] = [];
+    eventsByException[e.exception_id].push(e);
+  }
+
+  // Normalize rows
+  const rows = (exceptions ?? []).map((e: any) => {
+    const assignee = Array.isArray(e.assignee) ? e.assignee[0] : e.assignee;
+    const project = Array.isArray(e.projects) ? e.projects[0] : e.projects;
+    return {
+      id: e.id,
+      project_id: e.project_id,
+      project_code: project?.code ?? null,
+      project_name: project?.name ?? null,
+      type: e.type,
+      severity: e.severity,
+      message: e.message,
+      status: e.status,
+      assigned_to: e.assigned_to,
+      assigned_name: assignee?.full_name ?? assignee?.email ?? null,
+      resolved_at: e.resolved_at,
+      resolution_note: e.resolution_note ?? null,
+      acknowledged_at: e.acknowledged_at ?? null,
+      snoozed_until: e.snoozed_until ?? null,
+      due_at: e.due_at ?? null,
+      created_at: e.created_at,
+      updated_at: e.updated_at,
+    };
+  });
+
+  const normalizedTeam = (teamMembers ?? []).map((m: any) => ({
+    id: m.id,
+    name: m.full_name ?? m.email ?? 'User',
+  }));
+
+  // KPI counts
+  const open = rows.filter((r) => r.status === 'open').length;
+  const ack = rows.filter((r) => r.status === 'ack').length;
+  const closed = rows.filter((r) => r.status === 'closed').length;
   const critical = rows.filter((r) => r.severity === 'critical').length;
   const high = rows.filter((r) => r.severity === 'high').length;
   const medium = rows.filter((r) => r.severity === 'medium').length;
@@ -30,62 +99,60 @@ export default async function ExceptionsPage() {
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Exceptions</h1>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <AlertTriangle className="h-6 w-6 text-amber-500" />
+          Exceptions
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {rows.length} open exception{rows.length === 1 ? '' : 's'} · {critical} critical · {high} high · {medium} medium · {low} low
+          {open} open · {ack} acknowledged · {closed} closed
         </p>
       </div>
 
-      <Card className="bg-card/50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30">
-              <tr className="text-[10px] font-mono tracking-widest text-muted-foreground">
-                <th className="text-left p-3 font-normal">SEVERITY</th>
-                <th className="text-left p-3 font-normal">PROJECT</th>
-                <th className="text-left p-3 font-normal">TYPE</th>
-                <th className="text-left p-3 font-normal">MESSAGE</th>
-                <th className="text-right p-3 font-normal">AGE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-12 text-sm text-muted-foreground">
-                    No open exceptions. Portfolio is clean.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((e: any) => {
-                  const proj = Array.isArray(e.projects) ? e.projects[0] : e.projects;
-                  return (
-                    <tr key={e.id} className="border-t border-border hover:bg-accent/30">
-                      <td className="p-3">
-                        <Badge variant={sevVariant[e.severity as ExceptionSeverity]}>
-                          {e.severity}
-                        </Badge>
-                      </td>
-                      <td className="p-3 font-mono text-xs">
-                        <Link href={`/projects/${e.project_id}`} className="text-brand hover:underline">
-                          {proj?.code ?? '—'}
-                        </Link>
-                        <div className="text-muted-foreground text-[10px] truncate max-w-[220px]">
-                          {proj?.name ?? ''}
-                        </div>
-                      </td>
-                      <td className="p-3 text-xs font-mono text-muted-foreground">{e.type}</td>
-                      <td className="p-3 text-sm">{e.message}</td>
-                      <td className="p-3 text-right text-xs font-mono text-muted-foreground">
-                        {timeAgo(e.created_at)}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {/* KPI strip */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+        <KpiCell label="Open" value={String(open)} color="amber" />
+        <KpiCell label="Acknowledged" value={String(ack)} color="brand" />
+        <KpiCell label="Closed" value={String(closed)} color="emerald" />
+        <KpiCell label="Critical" value={String(critical)} color="red" />
+        <KpiCell label="High" value={String(high)} color="amber" />
+        <KpiCell label="Medium/Low" value={`${medium} / ${low}`} />
+      </div>
+
+      <ExceptionsList
+        rows={rows}
+        eventsByException={eventsByException}
+        teamMembers={normalizedTeam}
+      />
     </div>
+  );
+}
+
+function KpiCell({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: 'red' | 'amber' | 'emerald' | 'brand';
+}) {
+  const colorClass =
+    color === 'red'
+      ? 'text-red-400'
+      : color === 'amber'
+      ? 'text-amber-500'
+      : color === 'emerald'
+      ? 'text-emerald-500'
+      : color === 'brand'
+      ? 'text-brand'
+      : 'text-foreground';
+
+  return (
+    <Card className="p-3 bg-card/50">
+      <div className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase mb-1">
+        {label}
+      </div>
+      <div className={`text-lg font-semibold ${colorClass}`}>{value}</div>
+    </Card>
   );
 }

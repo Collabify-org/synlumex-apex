@@ -27,9 +27,11 @@ type QuotaInfo = {
 export function RiskPanel({
   projectId,
   quota,
+  canUse,
 }: {
   projectId: string;
   quota: QuotaInfo;
+  canUse: boolean;
 }) {
   const [risks, setRisks] = useState<RiskBullet[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,6 +65,36 @@ export function RiskPanel({
     }
   }
 
+  // ── Locked view (Pro+ feature) ──
+  if (!canUse) {
+    return (
+      <Card className="p-5 bg-card/50 border-dashed">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-8 w-8 rounded-md bg-muted/60 flex items-center justify-center">
+            <Lock className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold">AI Risk Analysis</h3>
+            <Badge variant="outline" className="font-mono text-[9px]">
+              PRO
+            </Badge>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+          AI reads this project&apos;s state and writes executive risk bullets — BOQ vs
+          contract drift, cash gaps, schedule pressure, and execution risk.
+        </p>
+        <a
+          href="mailto:abdul@synlumexai.com?subject=Upgrade to unlock AI Risk Analysis"
+          className="text-xs text-brand-cyan hover:underline font-medium"
+        >
+          Upgrade to Pro →
+        </a>
+      </Card>
+    );
+  }
+
+  // ── Unlocked view ──
   return (
     <Card className="p-5 bg-card/50">
       <div className="flex items-center justify-between mb-4">
@@ -84,7 +116,6 @@ export function RiskPanel({
         </div>
       )}
 
-      {/* Cap hit banner */}
       {(atCap || limitError) && (
         <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5">
           <div className="flex items-start gap-2">

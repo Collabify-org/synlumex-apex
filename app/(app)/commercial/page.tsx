@@ -1,13 +1,20 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getOrgPlan } from '@/lib/plan';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { formatMoney, pct } from '@/lib/format';
-import { TrendingUp, AlertTriangle, Banknote, FileText } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Banknote, FileText, Lock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CommercialPage() {
   const supabase = await createClient();
+  const orgPlan = await getOrgPlan(supabase);
+
+  // Gate: unbilled revenue tracking is Pro+
+  const canSeeUnbilled = orgPlan?.canUse('unbilled_revenue_tracking') ?? false;
+
   const { data: projects } = await supabase
     .from('projects')
     .select('*, clients(name), billing(amount, status), collections(amount)')
@@ -34,7 +41,7 @@ export default async function CommercialPage() {
       billed: acc.billed + r.billed,
       collected: acc.collected + r.collected,
       overdue: acc.overdue + r.overdue,
-      unbilled: acc.unbilled + r.unbilled
+      unbilled: acc.unbilled + r.unbilled,
     }),
     { contract: 0, billed: 0, collected: 0, overdue: 0, unbilled: 0 }
   );
@@ -70,20 +77,45 @@ export default async function CommercialPage() {
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-2">
             <Banknote className="h-3 w-3" /> Collected
           </div>
-          <div className="text-2xl font-semibold text-emerald-400">{formatMoney(totals.collected, 'INR')}</div>
+          <div className="text-2xl font-semibold text-emerald-400">
+            {formatMoney(totals.collected, 'INR')}
+          </div>
           <div className="text-[10px] text-muted-foreground font-mono mt-1">
             {pct(overallEfficiency)} collection efficiency
           </div>
         </Card>
-        <Card className="p-5 bg-card/50 border-amber-500/30">
-          <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-amber-400 uppercase mb-2">
-            <AlertTriangle className="h-3 w-3" /> Unbilled + Overdue
-          </div>
-          <div className="text-2xl font-semibold text-amber-400">{formatMoney(totals.unbilled, 'INR')}</div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">
-            {formatMoney(totals.overdue, 'INR')} overdue
-          </div>
-        </Card>
+
+        {/* Unbilled + Overdue — Pro+ only */}
+        {canSeeUnbilled ? (
+          <Card className="p-5 bg-card/50 border-amber-500/30">
+            <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-amber-400 uppercase mb-2">
+              <AlertTriangle className="h-3 w-3" /> Unbilled + Overdue
+            </div>
+            <div className="text-2xl font-semibold text-amber-400">
+              {formatMoney(totals.unbilled, 'INR')}
+            </div>
+            <div className="text-[10px] text-muted-foreground font-mono mt-1">
+              {formatMoney(totals.overdue, 'INR')} overdue
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-5 bg-card/50 border-dashed">
+            <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-2">
+              <Lock className="h-3 w-3" /> Unbilled Revenue
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="outline" className="font-mono text-[9px]">
+                PRO
+              </Badge>
+            </div>
+            <a
+              href="mailto:abdul@synlumexai.com?subject=Upgrade to unlock Unbilled Revenue Tracking"
+              className="text-[10px] text-brand-cyan hover:underline font-medium"
+            >
+              Upgrade to Pro →
+            </a>
+          </Card>
+        )}
       </div>
 
       <Card className="bg-card/50 overflow-hidden">
@@ -99,8 +131,12 @@ export default async function CommercialPage() {
                 <th className="text-right p-3 font-normal">CONTRACT</th>
                 <th className="text-right p-3 font-normal">BILLED</th>
                 <th className="text-right p-3 font-normal">COLLECTED</th>
-                <th className="text-right p-3 font-normal">UNBILLED</th>
-                <th className="text-right p-3 font-normal">OVERDUE</th>
+                {canSeeUnbilled && (
+                  <>
+                    <th className="text-right p-3 font-normal">UNBILLED</th>
+                    <th className="text-right p-3 font-normal">OVERDUE</th>
+                  </>
+                )}
                 <th className="text-right p-3 font-normal">EFFICIENCY</th>
               </tr>
             </thead>
@@ -111,7 +147,9 @@ export default async function CommercialPage() {
                     <Link href={`/projects/${r.id}`} className="text-brand hover:underline">
                       {r.code}
                     </Link>
-                    <div className="text-muted-foreground text-[10px] truncate max-w-[200px]">{r.name}</div>
+                    <div className="text-muted-foreground text-[10px] truncate max-w-[200px]">
+                      {r.name}
+                    </div>
                   </td>
                   <td className="p-3 text-xs text-muted-foreground truncate max-w-[160px]">
                     {r.clientName ?? '—'}
@@ -125,12 +163,16 @@ export default async function CommercialPage() {
                   <td className="p-3 text-right font-mono text-xs text-emerald-400">
                     {formatMoney(r.collected, r.currency)}
                   </td>
-                  <td className="p-3 text-right font-mono text-xs text-amber-400">
-                    {formatMoney(r.unbilled, r.currency)}
-                  </td>
-                  <td className="p-3 text-right font-mono text-xs text-red-400">
-                    {r.overdue > 0 ? formatMoney(r.overdue, r.currency) : '—'}
-                  </td>
+                  {canSeeUnbilled && (
+                    <>
+                      <td className="p-3 text-right font-mono text-xs text-amber-400">
+                        {formatMoney(r.unbilled, r.currency)}
+                      </td>
+                      <td className="p-3 text-right font-mono text-xs text-red-400">
+                        {r.overdue > 0 ? formatMoney(r.overdue, r.currency) : '—'}
+                      </td>
+                    </>
+                  )}
                   <td className="p-3 text-right font-mono text-xs">
                     {r.billed > 0 ? pct(r.efficiency) : '—'}
                   </td>

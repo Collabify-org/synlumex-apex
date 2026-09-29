@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { extractBOQ } from '@/lib/ai/provider';
 import { createClient } from '@/lib/supabase/server';
+import { canRunAI } from '@/lib/limits';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -13,15 +14,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Text too short' }, { status: 400 });
     }
 
-    const items = await extractBOQ(text);
-
     const supabase = await createClient();
+
+    // Enforce AI cap
+    const limit = await canRunAI(supabase);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        {
+          error: limit.reason ?? 'AI quota reached',
+          code: 'AI_LIMIT_REACHED',
+          used: limit.used,
+          limit: limit.limit,
+        },
+        { status: 403 }
+      );
+    }
+
+    const items = await extractBOQ(text);
 
     // Track usage
     try {
       await supabase.from('usage_events').insert({
         event_type: 'ai_boq',
-        metadata: { items: items.length, text_length: text.length }
+        metadata: { items: items.length, text_length: text.length },
       });
     } catch {}
 
@@ -32,7 +47,7 @@ export async function POST(req: Request) {
         unit: i.unit,
         quantity: i.quantity,
         rate: i.rate,
-        source: 'ai_extracted'
+        source: 'ai_extracted',
       }));
       const { error } = await supabase.from('boq_items').insert(rows);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });

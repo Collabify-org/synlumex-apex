@@ -1,15 +1,60 @@
 import { createClient } from '@/lib/supabase/server';
+import { getOrgPlan } from '@/lib/plan';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatMoney, pct } from '@/lib/format';
-import { Brain, TrendingUp, Clock, AlertTriangle, Globe, Target } from 'lucide-react';
+import {
+  Brain,
+  TrendingUp,
+  Clock,
+  AlertTriangle,
+  Globe,
+  Target,
+  Lock,
+  ArrowRight,
+} from 'lucide-react';
 import { STAGES } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function IntelligencePage() {
   const supabase = await createClient();
+  const orgPlan = await getOrgPlan(supabase);
 
+  // Gate: Historical Intelligence is Pro+ only
+  if (!orgPlan?.canUse('historical_intelligence')) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <Card className="p-8 bg-card/50 border-dashed text-center">
+          <div className="flex justify-center mb-4">
+            <div className="h-12 w-12 rounded-lg bg-muted/60 flex items-center justify-center">
+              <Lock className="h-6 w-6 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <h2 className="text-lg font-semibold">Historical Intelligence</h2>
+            <Badge variant="outline" className="font-mono text-[10px]">
+              PRO
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+            Compounding insights from your past projects — average durations, common delay
+            causes, drop-off stages, and lifetime value processed. Everything gets sharper
+            with every project you complete.
+          </p>
+          <a
+            href="mailto:abdul@synlumexai.com?subject=Upgrade to unlock Historical Intelligence"
+            className="inline-flex items-center gap-2 rounded-md brand-gradient text-white px-5 py-2.5 text-sm font-semibold hover:opacity-90"
+          >
+            Upgrade to Pro
+            <ArrowRight className="h-3.5 w-3.5" />
+          </a>
+        </Card>
+      </div>
+    );
+  }
+
+  // Full Intelligence page for Pro+
   const { data: projects } = await supabase.from('projects').select('*');
   const { data: exceptions } = await supabase.from('exceptions').select('type, severity');
   const { data: billing } = await supabase.from('billing').select('amount, status');
@@ -20,7 +65,6 @@ export default async function IntelligencePage() {
   const bs = billing ?? [];
   const cs = collections ?? [];
 
-  // Duration: avg days between start and end
   const durations = ps
     .filter((p) => p.start_date && p.end_date)
     .map((p) => (new Date(p.end_date).getTime() - new Date(p.start_date).getTime()) / 86400000);
@@ -28,40 +72,42 @@ export default async function IntelligencePage() {
     ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
     : 0;
 
-  // Exception causes breakdown
   const causeMap = new Map<string, number>();
   es.forEach((e) => causeMap.set(e.type, (causeMap.get(e.type) ?? 0) + 1));
   const topCauses = Array.from(causeMap.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
-  // Currency breakdown
   const currMap = new Map<string, number>();
-  ps.forEach((p) => currMap.set(p.currency, (currMap.get(p.currency) ?? 0) + Number(p.contract_value)));
+  ps.forEach((p) =>
+    currMap.set(p.currency, (currMap.get(p.currency) ?? 0) + Number(p.contract_value))
+  );
   const currencyBreakdown = Array.from(currMap.entries());
 
-  // Stage distribution
   const stageMap = new Map<string, number>();
-  ps.forEach((p) => stageMap.set(p.current_stage, (stageMap.get(p.current_stage) ?? 0) + 1));
+  ps.forEach((p) =>
+    stageMap.set(p.current_stage, (stageMap.get(p.current_stage) ?? 0) + 1)
+  );
 
-  // Financial totals
   const totalContract = ps.reduce((s, p) => s + Number(p.contract_value), 0);
   const totalBilled = bs.reduce((s, b) => s + Number(b.amount), 0);
   const totalCollected = cs.reduce((s, c) => s + Number(c.amount), 0);
-  const overdueAmount = bs.filter((b) => b.status === 'overdue').reduce((s, b) => s + Number(b.amount), 0);
 
-  // Health distribution
   const healthCounts = {
     green: ps.filter((p) => p.health === 'green').length,
     amber: ps.filter((p) => p.health === 'amber').length,
     red: ps.filter((p) => p.health === 'red').length,
-    on_hold: ps.filter((p) => p.health === 'on_hold').length
+    on_hold: ps.filter((p) => p.health === 'on_hold').length,
   };
 
-  // Avg days-to-end across active
   const activeWithEnd = ps.filter((p) => p.end_date && !p.archived);
   const avgDaysToEnd = activeWithEnd.length > 0
-    ? Math.round(activeWithEnd.reduce((s, p) => s + (new Date(p.end_date!).getTime() - Date.now()) / 86400000, 0) / activeWithEnd.length)
+    ? Math.round(
+        activeWithEnd.reduce(
+          (s, p) => s + (new Date(p.end_date!).getTime() - Date.now()) / 86400000,
+          0
+        ) / activeWithEnd.length
+      )
     : 0;
 
   return (
@@ -126,7 +172,9 @@ export default async function IntelligencePage() {
                       <span className="text-xs font-mono text-muted-foreground">
                         {String(i + 1).padStart(2, '0')} · {type.replace(/_/g, ' ')}
                       </span>
-                      <span className="text-xs font-mono">{count} ({pctOfTotal.toFixed(0)}%)</span>
+                      <span className="text-xs font-mono">
+                        {count} ({pctOfTotal.toFixed(0)}%)
+                      </span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
@@ -212,11 +260,17 @@ export default async function IntelligencePage() {
               <div
                 key={s.key}
                 className={`rounded-md px-3 py-2 min-w-[76px] text-center ${
-                  count > 0 ? 'bg-brand/10 border border-brand/30' : 'bg-muted/30 border border-border'
+                  count > 0
+                    ? 'bg-brand/10 border border-brand/30'
+                    : 'bg-muted/30 border border-border'
                 }`}
               >
                 <div className="text-[10px] font-mono text-muted-foreground">{s.short}</div>
-                <div className={`text-lg font-semibold ${count > 0 ? 'text-brand' : 'text-muted-foreground'}`}>
+                <div
+                  className={`text-lg font-semibold ${
+                    count > 0 ? 'text-brand' : 'text-muted-foreground'
+                  }`}
+                >
                   {count}
                 </div>
               </div>

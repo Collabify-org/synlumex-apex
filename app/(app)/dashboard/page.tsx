@@ -10,6 +10,8 @@ import { StageDistribution, HealthDistribution } from './charts';
 import { ExceptionsFeed } from './exceptions-feed';
 import { ProjectsTable } from './projects-table';
 import { RemindersPanel } from './reminders-panel';
+import { TimeFilter } from './time-filter';
+import { ExportPdfButton } from './export-pdf-button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatMoney, pct, timeAgo, shortDate } from '@/lib/format';
@@ -55,7 +57,7 @@ export default async function DashboardPage() {
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Owner Command Center</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -70,9 +72,89 @@ export default async function DashboardPage() {
             UTC
           </p>
         </div>
-        <span className="text-[10px] font-mono text-muted-foreground">
-          recomputeProjectState() ran {syncLabel}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-mono text-muted-foreground hidden md:block">
+            recomputeProjectState() ran {syncLabel}
+          </span>
+          <TimeFilter />
+          <ExportPdfButton
+            snapshot={{
+              generatedAt: new Date().toLocaleString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+              rangeLabel: '30 days',
+              kpis: [
+                {
+                  label: 'Active Project Value',
+                  value: formatMoney(metrics.totalContractValue, 'INR'),
+                  sub: `${metrics.activeProjects} active`,
+                },
+                {
+                  label: 'Collection',
+                  value: pct(metrics.collectionEfficiency),
+                  sub: formatMoney(metrics.totalCollected, 'INR'),
+                },
+                {
+                  label: 'Exceptions',
+                  value: String(metrics.openExceptions),
+                  sub: `${metrics.criticalExceptions} critical`,
+                },
+                {
+                  label: 'Overdue Reminders',
+                  value: String(metrics.overdueReminders),
+                  sub: metrics.overdueReminders === 0 ? 'all clear' : 'past due',
+                },
+                {
+                  label: 'Billed',
+                  value: formatMoney(metrics.totalBilled, 'INR'),
+                  sub: 'to date',
+                },
+                {
+                  label: 'Unbilled',
+                  value: formatMoney(metrics.totalUnbilled, 'INR'),
+                  sub: 'billed - collected',
+                },
+                {
+                  label: 'Execution',
+                  value: pct(metrics.avgExecutionProgress),
+                  sub: 'weighted',
+                },
+                {
+                  label: 'Attention',
+                  value: String(metrics.attention.length),
+                  sub: 'items',
+                },
+              ],
+              attention: metrics.attention.map((a) => ({
+                project: a.project_code,
+                message: a.message,
+                severity: a.severity,
+              })),
+              milestones: metrics.milestones.map((m) => ({
+                project: m.project_code,
+                name: m.project_name,
+                end_date: m.end_date,
+                days: m.days_away,
+              })),
+              cash: {
+                billed: formatMoney(metrics.cash.billed_30d, 'INR'),
+                collected: formatMoney(metrics.cash.collected_30d, 'INR'),
+                rate: pct(metrics.cash.collection_rate_30d),
+                overdue: formatMoney(metrics.cash.overdue_total, 'INR'),
+              },
+              topProjects: projects.slice(0, 8).map((p: any) => ({
+                code: p.code,
+                name: p.name,
+                health: p.health,
+                value: formatMoney(Number(p.contract_value), p.currency ?? 'INR'),
+              })),
+            }}
+          />
+        </div>
       </div>
 
       {/* KPI Grid */}

@@ -21,7 +21,10 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
+import { ProjectCardGrid } from './project-card-grid';
 
 const healthVariant: Record<HealthStatus, 'green' | 'amber' | 'red' | 'secondary'> = {
   green: 'green',

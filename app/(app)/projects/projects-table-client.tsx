@@ -65,6 +65,21 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
   const [pageSize, setPageSize] = useState(25);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<'table' | 'card'>('table');
+
+  // Persist view choice
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('synlumex:projects-view');
+      if (saved === 'card' || saved === 'table') setView(saved);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('synlumex:projects-view', view);
+    } catch {}
+  }, [view]);
 
   // Reset selection when rows change
   useEffect(() => {
@@ -184,8 +199,40 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
     };
   }, [rows, totals]);
 
-  return (
+    return (
     <div className="space-y-4">
+      {/* View toggle */}
+      <div className="flex items-center justify-end">
+        <div className="inline-flex items-center rounded-lg border border-border bg-card/60 p-0.5">
+          <button
+            onClick={() => setView('table')}
+            className={cn(
+              'px-2.5 py-1.5 text-xs rounded-md transition-colors inline-flex items-center gap-1.5',
+              view === 'table'
+                ? 'bg-brand/15 text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            aria-label="Table view"
+          >
+            <List className="h-3.5 w-3.5" />
+            Table
+          </button>
+          <button
+            onClick={() => setView('card')}
+            className={cn(
+              'px-2.5 py-1.5 text-xs rounded-md transition-colors inline-flex items-center gap-1.5',
+              view === 'card'
+                ? 'bg-brand/15 text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            aria-label="Card view"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Cards
+          </button>
+        </div>
+      </div>
+
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiStripCell label="Total" value={String(kpis.total)} />

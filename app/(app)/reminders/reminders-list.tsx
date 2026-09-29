@@ -102,20 +102,21 @@ export function RemindersList({ rows, eventsByReminder, teamMembers }: Props) {
 
   // Compute status for each row
   const enrichedRows = useMemo(() => {
-    const now = Date.now();
-    return rows.map((r) => {
-      const due = new Date(r.due_at).getTime();
-      const isOverdue = r.status === 'pending' && due < now;
-      const isSnoozed =
-        r.snoozed_until && new Date(r.snoozed_until).getTime() > now;
-      return {
-        ...r,
-        _isOverdue: isOverdue,
-        _isSnoozed: isSnoozed,
-        _dueMs: due,
-      };
-    });
-  }, [rows]);
+  const now = Date.now();
+  return rows.map((r) => {
+    const due = new Date(r.due_at).getTime();
+    // status is already normalized by the page — trust it
+    const isOverdue = r.status === 'overdue';
+    const isSnoozed =
+      r.snoozed_until && new Date(r.snoozed_until).getTime() > now;
+    return {
+      ...r,
+      _isOverdue: isOverdue,
+      _isSnoozed: isSnoozed,
+      _dueMs: due,
+    };
+  });
+}, [rows]);
 
   // Filter + sort
   const filtered = useMemo(() => {
@@ -133,14 +134,13 @@ export function RemindersList({ rows, eventsByReminder, teamMembers }: Props) {
     }
 
     if (statusFilter.length > 0) {
-      result = result.filter((r) => {
-        if (statusFilter.includes('overdue') && r._isOverdue) return true;
-        if (statusFilter.includes('pending') && r.status === 'pending' && !r._isOverdue) return true;
-        if (statusFilter.includes('done') && r.status === 'done') return true;
-        return false;
-      });
-    }
-
+  result = result.filter((r) => {
+    if (statusFilter.includes('overdue') && r.status === 'overdue') return true;
+    if (statusFilter.includes('pending') && r.status === 'pending') return true;
+    if (statusFilter.includes('done') && r.status === 'done') return true;
+    return false;
+  });
+}
     result = [...result].sort((a, b) => {
       if (sort === 'priority') {
         const order = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -155,11 +155,9 @@ export function RemindersList({ rows, eventsByReminder, teamMembers }: Props) {
     return result;
   }, [enrichedRows, search, statusFilter, sort]);
 
-  const overdue = enrichedRows.filter((r) => r._isOverdue).length;
-  const pending = enrichedRows.filter(
-    (r) => r.status === 'pending' && !r._isOverdue
-  ).length;
-  const done = enrichedRows.filter((r) => r.status === 'done').length;
+  const overdue = enrichedRows.filter((r) => r.status === 'overdue').length;
+const pending = enrichedRows.filter((r) => r.status === 'pending').length;
+const done = enrichedRows.filter((r) => r.status === 'done').length;
 
   const openRow = openId ? rows.find((r) => r.id === openId) ?? null : null;
   const openEvents = openId ? eventsByReminder[openId] ?? [] : [];

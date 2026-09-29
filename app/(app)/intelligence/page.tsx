@@ -8,11 +8,8 @@ import { formatMoney, pct } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
   Brain,
-  TrendingUp,
-  Clock,
   AlertTriangle,
   Globe,
-  Target,
   Lock,
   ArrowRight,
   Building2,
@@ -97,24 +94,27 @@ export default async function IntelligencePage({
       {/* KPI grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <IntelKpi
-          icon={Clock}
+          icon="clock"
           label="Avg Project Duration"
           value={`${data.avgDuration.current} days`}
           sub={`≈ ${Math.round(data.avgDuration.current / 30)} months across portfolio`}
           delta={data.avgDuration}
         />
         <IntelKpi
-          icon={Target}
+          icon="target"
           label="Avg Days to Contract End"
           value={`${data.avgDaysToEnd.current} days`}
           sub={`Across ${data.totalProjects} active projects`}
           delta={data.avgDaysToEnd}
         />
         <IntelKpi
-          icon={TrendingUp}
+          icon="trending"
           label="Lifetime Value Processed"
           value={formatMoney(data.lifetimeValue.current, 'INR')}
-          sub={`${formatMoney(data.currencyExposure.find((c) => c.currency === 'INR')?.value ?? 0, 'INR')} in INR contracts`}
+          sub={`${formatMoney(
+            data.currencyExposure.find((c) => c.currency === 'INR')?.value ?? 0,
+            'INR'
+          )} in INR contracts`}
           delta={data.lifetimeValue}
         />
       </div>
@@ -151,7 +151,7 @@ export default async function IntelligencePage({
                   href={`/exceptions?q=${encodeURIComponent(cause.type)}`}
                   className="block group"
                 >
-                  <div className="flex items-center justify-between mb-1 group-hover:text-foreground">
+                  <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-mono text-muted-foreground group-hover:text-foreground">
                       {String(i + 1).padStart(2, '0')} ·{' '}
                       {cause.type.replace(/_/g, ' ')}
@@ -192,7 +192,8 @@ export default async function IntelligencePage({
                       {c.currency}
                     </span>
                     <span className="text-xs font-mono">
-                      {formatMoney(c.value, c.currency as any)} ({c.percent.toFixed(0)}%)
+                      {formatMoney(c.value, c.currency as any)} ({c.percent.toFixed(0)}
+                      %)
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -243,10 +244,7 @@ export default async function IntelligencePage({
       <Card className="p-5 bg-card/50 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold">Stage Distribution Across Portfolio</h3>
-          <Link
-            href="/projects"
-            className="text-xs text-brand hover:underline"
-          >
+          <Link href="/projects" className="text-xs text-brand hover:underline">
             View all →
           </Link>
         </div>
@@ -336,7 +334,9 @@ export default async function IntelligencePage({
                   >
                     <td className="p-2 text-xs">
                       <Link
-                        href={`/projects?client=${encodeURIComponent(c.client_name)}`}
+                        href={`/projects?client=${encodeURIComponent(
+                          c.client_name
+                        )}`}
                         className="hover:underline"
                       >
                         {c.client_name}

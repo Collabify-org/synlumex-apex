@@ -155,7 +155,6 @@ export default async function DashboardPage() {
 
       {/* Needs Attention + Cash Snapshot row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Needs Attention panel */}
         <Card className="lg:col-span-2 p-5 bg-card/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -209,7 +208,6 @@ export default async function DashboardPage() {
           )}
         </Card>
 
-        {/* Cash Snapshot panel */}
         <Card className="p-5 bg-card/50">
           <div className="flex items-center gap-2 mb-4">
             <Wallet className="h-4 w-4 text-emerald-500" />
@@ -274,7 +272,6 @@ export default async function DashboardPage() {
 
       {/* Activity + Milestones row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Activity Feed */}
         <Card className="lg:col-span-2 p-5 bg-card/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -319,7 +316,6 @@ export default async function DashboardPage() {
           )}
         </Card>
 
-        {/* Upcoming Milestones */}
         <Card className="p-5 bg-card/50">
           <div className="flex items-center gap-2 mb-4">
             <CalendarClock className="h-4 w-4 text-blue-400" />

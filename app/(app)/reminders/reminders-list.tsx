@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { timeAgo, shortDate } from '@/lib/format';
-import { createClient } from '@/integrations/../lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import {
   Search,
   AlertTriangle,

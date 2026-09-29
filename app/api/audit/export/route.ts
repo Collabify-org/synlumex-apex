@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getOrgPlan } from '@/lib/plan';
+import { listAudit, type AuditCategory } from '@/lib/queries/audit';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+function csvCell(v: string | number | null | undefined): string {
+  const s = String(v ?? '').replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+
+export async function GET(req: Request) {
   try {
     const supabase = await createClient();
     const orgPlan = await getOrgPlan(supabase);
 
-    // Enforce Enterprise-only audit export
     if (!orgPlan?.canUse('audit_export')) {
       return NextResponse.json(
         {
@@ -20,51 +26,66 @@ export async function GET() {
       );
     }
 
-    const { data: logs } = await supabase
-      .from('audit_log')
-      .select('*, projects(code, name), profiles(full_name)')
-      .order('created_at', { ascending: false })
-      .limit(1000);
+    const { searchParams } = new URL(req.url);
 
-    const rows = logs ?? [];
+    // Fetch all matching rows (up to 5000) — paginate through
+    const allRows: any[] = [];
+    let page = 1;
+    const pageSize = 500;
+    let more = true;
+    while (more && allRows.length < 5000) {
+      const result = await listAudit({
+        q: searchParams.get('q') ?? undefined,
+        category: (searchParams.get('category') as AuditCategory) ?? 'all',
+        actor_id: searchParams.get('actor_id') ?? undefined,
+        range: (searchParams.get('range') as any) ?? '30d',
+        page,
+        pageSize,
+      });
+      allRows.push(...result.rows);
+      more = result.rows.length === pageSize;
+      page += 1;
+    }
 
-    // Build CSV
-    const header = ['when', 'action', 'entity', 'entity_id', 'project_code', 'actor', 'payload'];
+    const header = [
+      'when',
+      'category',
+      'action',
+      'entity',
+      'entity_id',
+      'project_code',
+      'actor',
+      'payload',
+    ];
     const lines = [header.join(',')];
 
-    for (const l of rows as any[]) {
-      const proj = Array.isArray(l.projects) ? l.projects[0] : l.projects;
-      const profile = Array.isArray(l.profiles) ? l.profiles[0] : l.profiles;
-
-      const cells = [
-        l.created_at ?? '',
-        l.action ?? '',
-        l.entity ?? '',
-        l.entity_id ?? '',
-        proj?.code ?? '',
-        profile?.full_name ?? 'system',
-        JSON.stringify(l.payload ?? {}),
-      ].map((cell) => {
-        const s = String(cell).replace(/"/g, '""');
-        return /[",\n]/.test(s) ? `"${s}"` : s;
-      });
-
-      lines.push(cells.join(','));
+    for (const r of allRows) {
+      lines.push(
+        [
+          r.created_at,
+          r.category,
+          r.action,
+          r.entity ?? '',
+          r.entity_id ?? '',
+          r.project_code ?? '',
+          r.actor_name ?? 'System',
+          JSON.stringify(r.payload ?? {}),
+        ]
+          .map(csvCell)
+          .join(',')
+      );
     }
 
     const csv = lines.join('\n');
     const stamp = new Date().toISOString().slice(0, 10);
 
-    return new NextResponse(csv, {
+    return new NextResponse('\uFEFF' + csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="synlumex-audit-${stamp}.csv"`,
       },
     });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? 'Unknown error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { summarizeRisk, type ProjectRiskContext } from '@/lib/ai/provider';
 import { createClient } from '@/lib/supabase/server';
+import { canRunAI } from '@/lib/limits';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -11,6 +12,20 @@ export async function POST(req: Request) {
     if (!projectId) return NextResponse.json({ error: 'projectId required' }, { status: 400 });
 
     const supabase = await createClient();
+
+    // Enforce AI cap
+    const limit = await canRunAI(supabase);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        {
+          error: limit.reason ?? 'AI quota reached',
+          code: 'AI_LIMIT_REACHED',
+          used: limit.used,
+          limit: limit.limit,
+        },
+        { status: 403 }
+      );
+    }
 
     const { data: project } = await supabase
       .from('projects')
@@ -67,7 +82,7 @@ export async function POST(req: Request) {
       collected,
       overdue,
       exceptions: exceptions ?? [],
-      daysToEnd
+      daysToEnd,
     };
 
     const risks = await summarizeRisk(ctx);
@@ -76,7 +91,7 @@ export async function POST(req: Request) {
     try {
       await supabase.from('usage_events').insert({
         event_type: 'ai_risk',
-        metadata: { project_id: projectId, risks_count: risks.length }
+        metadata: { project_id: projectId, risks_count: risks.length },
       });
     } catch {}
 

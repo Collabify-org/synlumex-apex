@@ -18,7 +18,6 @@ import {
   MoreVertical,
   Archive,
   ExternalLink,
-  Trash2,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
@@ -67,7 +66,6 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<'table' | 'card'>('table');
 
-  // Persist view choice
   useEffect(() => {
     try {
       const saved = localStorage.getItem('synlumex:projects-view');
@@ -81,13 +79,11 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
     } catch {}
   }, [view]);
 
-  // Reset selection when rows change
   useEffect(() => {
     setSelected(new Set());
     setPage(1);
   }, [rows.length]);
 
-  // Close menu on outside click
   useEffect(() => {
     if (!menuOpen) return;
     function handle(e: MouseEvent) {
@@ -126,7 +122,12 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
 
   async function archiveSelected() {
     if (selected.size === 0) return;
-    if (!confirm(`Archive ${selected.size} project${selected.size === 1 ? '' : 's'}? They will be hidden from the active list.`)) return;
+    if (
+      !confirm(
+        `Archive ${selected.size} project${selected.size === 1 ? '' : 's'}? They will be hidden from the active list.`
+      )
+    )
+      return;
 
     setBusy(true);
     try {
@@ -162,7 +163,6 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
     }
   }
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const start = (safePage - 1) * pageSize;
@@ -171,7 +171,6 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
   const allOnPageSelected =
     pageRows.length > 0 && pageRows.every((r) => selected.has(r.id));
 
-  // Totals
   const totals = useMemo(() => {
     const byCurrency: Record<string, number> = {};
     for (const r of rows) {
@@ -188,18 +187,19 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
     return byCurrency;
   }, [pageRows]);
 
-  const kpis = useMemo(() => {
-    return {
+  const kpis = useMemo(
+    () => ({
       total: rows.length,
       onTrack: rows.filter((r) => r.health === 'green').length,
       atRisk: rows.filter((r) => r.health === 'amber').length,
       critical: rows.filter((r) => r.health === 'red').length,
       onHold: rows.filter((r) => r.health === 'on_hold').length,
       totalValueByCurrency: totals,
-    };
-  }, [rows, totals]);
+    }),
+    [rows, totals]
+  );
 
-    return (
+  return (
     <div className="space-y-4">
       {/* View toggle */}
       <div className="flex items-center justify-end">
@@ -251,9 +251,7 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
       {/* Bulk actions bar */}
       {selected.size > 0 && (
         <div className="flex items-center justify-between rounded-md border border-brand-cyan/40 bg-brand/10 px-3 py-2">
-          <span className="text-xs font-medium">
-            {selected.size} selected
-          </span>
+          <span className="text-xs font-medium">{selected.size} selected</span>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
               Clear
@@ -272,220 +270,234 @@ export function ProjectsTableClient({ rows }: { rows: ProjectRow[] }) {
         </div>
       )}
 
-        {/* Card view (early return) */}
+      {/* Card view */}
       {view === 'card' && <ProjectCardGrid rows={pageRows} />}
 
       {/* Table view */}
       {view === 'table' && (
-      <Card className="bg-card/50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30">
-              <tr className="text-[10px] font-mono tracking-widest text-muted-foreground">
-                <th className="w-10 p-3">
-                  <input
-                    type="checkbox"
-                    checked={allOnPageSelected}
-                    onChange={toggleSelectAll}
-                    className="h-3.5 w-3.5 rounded border-border cursor-pointer"
-                  />
-                </th>
-                <SortHeader field="code" current={sort} dir={dir} onSort={setSort}>
-                  CODE
-                </SortHeader>
-                <SortHeader field="name" current={sort} dir={dir} onSort={setSort}>
-                  NAME
-                </SortHeader>
-                <th className="text-left p-3 font-normal">CLIENT</th>
-                <SortHeader field="current_stage" current={sort} dir={dir} onSort={setSort}>
-                  STAGE
-                </SortHeader>
-                <SortHeader field="health" current={sort} dir={dir} onSort={setSort}>
-                  HEALTH
-                </SortHeader>
-                <SortHeader field="contract_value" current={sort} dir={dir} onSort={setSort} align="right">
-                  CONTRACT
-                </SortHeader>
-                <SortHeader field="end_date" current={sort} dir={dir} onSort={setSort} align="right">
-                  END DATE
-                </SortHeader>
-                <th className="w-10 p-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="text-center py-12 text-sm text-muted-foreground">
-                    No projects match your filters.
-                  </td>
+        <Card className="bg-card/50 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/30">
+                <tr className="text-[10px] font-mono tracking-widest text-muted-foreground">
+                  <th className="w-10 p-3">
+                    <input
+                      type="checkbox"
+                      checked={allOnPageSelected}
+                      onChange={toggleSelectAll}
+                      className="h-3.5 w-3.5 rounded border-border cursor-pointer"
+                    />
+                  </th>
+                  <SortHeader field="code" current={sort} dir={dir} onSort={setSort}>
+                    CODE
+                  </SortHeader>
+                  <SortHeader field="name" current={sort} dir={dir} onSort={setSort}>
+                    NAME
+                  </SortHeader>
+                  <th className="text-left p-3 font-normal">CLIENT</th>
+                  <SortHeader field="current_stage" current={sort} dir={dir} onSort={setSort}>
+                    STAGE
+                  </SortHeader>
+                  <SortHeader field="health" current={sort} dir={dir} onSort={setSort}>
+                    HEALTH
+                  </SortHeader>
+                  <SortHeader
+                    field="contract_value"
+                    current={sort}
+                    dir={dir}
+                    onSort={setSort}
+                    align="right"
+                  >
+                    CONTRACT
+                  </SortHeader>
+                  <SortHeader
+                    field="end_date"
+                    current={sort}
+                    dir={dir}
+                    onSort={setSort}
+                    align="right"
+                  >
+                    END DATE
+                  </SortHeader>
+                  <th className="w-10 p-3"></th>
                 </tr>
-              ) : (
-                pageRows.map((p) => {
-                  const stage = STAGES.find((s) => s.key === p.current_stage);
-                  const checked = selected.has(p.id);
-                  return (
-                    <tr
-                      key={p.id}
-                      className={cn(
-                        'border-t border-border hover:bg-accent/30 transition-colors',
-                        checked && 'bg-brand/5'
-                      )}
+              </thead>
+              <tbody>
+                {pageRows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="text-center py-12 text-sm text-muted-foreground"
                     >
-                      <td className="p-3">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleSelect(p.id)}
-                          className="h-3.5 w-3.5 rounded border-border cursor-pointer"
-                        />
-                      </td>
-                      <td className="p-3 font-mono text-xs text-brand">
-                        <Link href={`/projects/${p.id}`}>{p.code}</Link>
-                      </td>
-                      <td className="p-3 max-w-[240px]">
-                        <Link
-                          href={`/projects/${p.id}`}
-                          className="hover:underline block truncate"
-                        >
-                          {p.name}
-                        </Link>
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground truncate max-w-[180px]">
-                        {p.client_name ?? '—'}
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground">
-                        {stage?.label ?? p.current_stage}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={healthVariant[p.health]}>
-                          {healthLabel[p.health]}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs whitespace-nowrap">
-                        {formatMoney(p.contract_value, p.currency)}
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
-                        {shortDate(p.end_date)}
-                      </td>
-                      <td className="p-2 text-right relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpen(menuOpen === p.id ? null : p.id);
-                          }}
-                          className="p-1.5 rounded hover:bg-accent"
-                          aria-label="Actions"
-                        >
-                          <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
-                        {menuOpen === p.id && (
-                          <div
-                            className="absolute right-2 top-full mt-1 w-44 rounded-md border border-border bg-card shadow-lg z-20 overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Link
-                              href={`/projects/${p.id}`}
-                              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent/50"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              Open project
-                            </Link>
-                            <button
-                              onClick={() => archiveOne(p.id, p.code)}
-                              disabled={busy}
-                              className="flex items-center gap-2 px-3 py-2 text-xs w-full text-left hover:bg-destructive/10 text-destructive"
-                            >
-                              <Archive className="h-3 w-3" />
-                              Archive project
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-
-            {/* Totals row */}
-            {pageRows.length > 0 && (
-              <tfoot className="bg-muted/20 border-t-2 border-border">
-                <tr className="text-xs font-medium">
-                  <td colSpan={6} className="p-3 text-right text-muted-foreground">
-                    Page totals
-                  </td>
-                  <td className="p-3 text-right font-mono text-xs whitespace-nowrap">
-                    {Object.entries(pageTotals)
-                      .map(([cur, val]) => formatMoney(val, cur as any))
-                      .join(' · ')}
-                  </td>
-                  <td colSpan={2}></td>
-                </tr>
-                {rows.length > pageSize && (
-                  <tr className="text-xs">
-                    <td colSpan={6} className="p-3 text-right text-muted-foreground">
-                      Filtered totals ({rows.length} projects)
+                      No projects match your filters.
                     </td>
-                    <td className="p-3 text-right font-mono text-xs whitespace-nowrap font-semibold">
-                      {Object.entries(totals)
+                  </tr>
+                ) : (
+                  pageRows.map((p) => {
+                    const stage = STAGES.find((s) => s.key === p.current_stage);
+                    const checked = selected.has(p.id);
+                    return (
+                      <tr
+                        key={p.id}
+                        className={cn(
+                          'border-t border-border hover:bg-accent/30 transition-colors',
+                          checked && 'bg-brand/5'
+                        )}
+                      >
+                        <td className="p-3">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleSelect(p.id)}
+                            className="h-3.5 w-3.5 rounded border-border cursor-pointer"
+                          />
+                        </td>
+                        <td className="p-3 font-mono text-xs text-brand">
+                          <Link href={`/projects/${p.id}`}>{p.code}</Link>
+                        </td>
+                        <td className="p-3 max-w-[240px]">
+                          <Link
+                            href={`/projects/${p.id}`}
+                            className="hover:underline block truncate"
+                          >
+                            {p.name}
+                          </Link>
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground truncate max-w-[180px]">
+                          {p.client_name ?? '—'}
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">
+                          {stage?.label ?? p.current_stage}
+                        </td>
+                        <td className="p-3">
+                          <Badge variant={healthVariant[p.health]}>
+                            {healthLabel[p.health]}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right font-mono text-xs whitespace-nowrap">
+                          {formatMoney(p.contract_value, p.currency)}
+                        </td>
+                        <td className="p-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
+                          {shortDate(p.end_date)}
+                        </td>
+                        <td className="p-2 text-right relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpen(menuOpen === p.id ? null : p.id);
+                            }}
+                            className="p-1.5 rounded hover:bg-accent"
+                            aria-label="Actions"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                          {menuOpen === p.id && (
+                            <div
+                              className="absolute right-2 top-full mt-1 w-44 rounded-md border border-border bg-card shadow-lg z-20 overflow-hidden"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Link
+                                href={`/projects/${p.id}`}
+                                className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent/50"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Open project
+                              </Link>
+                              <button
+                                onClick={() => archiveOne(p.id, p.code)}
+                                disabled={busy}
+                                className="flex items-center gap-2 px-3 py-2 text-xs w-full text-left hover:bg-destructive/10 text-destructive"
+                              >
+                                <Archive className="h-3 w-3" />
+                                Archive project
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+
+              {pageRows.length > 0 && (
+                <tfoot className="bg-muted/20 border-t-2 border-border">
+                  <tr className="text-xs font-medium">
+                    <td colSpan={6} className="p-3 text-right text-muted-foreground">
+                      Page totals
+                    </td>
+                    <td className="p-3 text-right font-mono text-xs whitespace-nowrap">
+                      {Object.entries(pageTotals)
                         .map(([cur, val]) => formatMoney(val, cur as any))
                         .join(' · ')}
                     </td>
                     <td colSpan={2}></td>
                   </tr>
-                )}
-              </tfoot>
-            )}
-          </table>
-        </div>
+                  {rows.length > pageSize && (
+                    <tr className="text-xs">
+                      <td colSpan={6} className="p-3 text-right text-muted-foreground">
+                        Filtered totals ({rows.length} projects)
+                      </td>
+                      <td className="p-3 text-right font-mono text-xs whitespace-nowrap font-semibold">
+                        {Object.entries(totals)
+                          .map(([cur, val]) => formatMoney(val, cur as any))
+                          .join(' · ')}
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  )}
+                </tfoot>
+              )}
+            </table>
+          </div>
 
-        {/* Pagination */}
-        {rows.length > pageSize && (
-          <div className="flex items-center justify-between border-t border-border px-4 py-3">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Rows per page:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="h-7 rounded border border-input bg-background px-2 text-xs"
-              >
-                {PAGE_SIZES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-muted-foreground font-mono">
-                {start + 1}–{Math.min(start + pageSize, rows.length)} of {rows.length}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={safePage === 1}
-                  className="p-1.5 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+          {rows.length > pageSize && (
+            <div className="flex items-center justify-between border-t border-border px-4 py-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Rows per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="h-7 rounded border border-input bg-background px-2 text-xs"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </button>
-                <span className="font-mono px-2">
-                  {safePage} / {totalPages}
+                  {PAGE_SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-muted-foreground font-mono">
+                  {start + 1}–{Math.min(start + pageSize, rows.length)} of {rows.length}
                 </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={safePage === totalPages}
-                  className="p-1.5 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage === 1}
+                    className="p-1.5 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="font-mono px-2">
+                    {safePage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage === totalPages}
+                    className="p-1.5 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
@@ -514,7 +526,12 @@ function SortHeader({
       )}
       onClick={() => onSort(field)}
     >
-      <span className={cn('inline-flex items-center gap-1', align === 'right' && 'flex-row-reverse')}>
+      <span
+        className={cn(
+          'inline-flex items-center gap-1',
+          align === 'right' && 'flex-row-reverse'
+        )}
+      >
         {children}
         {active ? (
           dir === 'asc' ? (
@@ -555,7 +572,13 @@ function KpiStripCell({
       <div className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase mb-1">
         {label}
       </div>
-      <div className={cn('font-semibold', small ? 'text-xs' : 'text-lg', colorClass)}>
+      <div
+        className={cn(
+          'font-semibold',
+          small ? 'text-xs' : 'text-lg',
+          colorClass
+        )}
+      >
         {value || '—'}
       </div>
     </Card>

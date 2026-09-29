@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { SavedViews } from './saved-views';
 import { cn } from '@/lib/utils';
 import { Search, Filter, X, Download, ChevronDown } from 'lucide-react';
 import { STAGES } from '@/lib/types';
@@ -98,8 +99,11 @@ export function ProjectsToolbar({ clients, totalCount, filteredCount }: Props) {
 
   const exportUrl = `/api/projects/export?${searchParams.toString()}`;
 
-  return (
+    return (
     <div className="space-y-3">
+      {/* Saved views row */}
+      <SavedViews />
+      {/* Top row: search + filters + export */}
       {/* Top row: search + filters + export */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px] max-w-md">

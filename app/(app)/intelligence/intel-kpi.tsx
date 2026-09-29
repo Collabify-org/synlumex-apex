@@ -3,12 +3,37 @@
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Clock,
+  Target,
+  TrendingUp,
+  Sparkles,
+  Building2,
+  Wallet,
+  FileText,
+  AlertTriangle,
+  Banknote,
+  type LucideIcon,
+} from 'lucide-react';
 import type { KpiDelta } from '@/lib/queries/intelligence';
 
+const ICONS: Record<string, LucideIcon> = {
+  clock: Clock,
+  target: Target,
+  trending: TrendingUp,
+  sparkles: Sparkles,
+  building: Building2,
+  wallet: Wallet,
+  file: FileText,
+  alert: AlertTriangle,
+  banknote: Banknote,
+};
+
 type Props = {
-  icon: LucideIcon;
+  icon: string; // name of icon, e.g. "clock"
   label: string;
   value: string;
   sub?: string;
@@ -17,12 +42,23 @@ type Props = {
   className?: string;
 };
 
-export function IntelKpi({ icon: Icon, label, value, sub, delta, href, className }: Props) {
+export function IntelKpi({
+  icon,
+  label,
+  value,
+  sub,
+  delta,
+  href,
+  className,
+}: Props) {
+  const Icon = ICONS[icon] ?? Sparkles;
+
   const card = (
     <Card
       className={cn(
         'p-5 bg-card/50 border-border transition-all',
-        href && 'hover:border-brand-cyan/40 hover:shadow-lg hover:shadow-brand/5 cursor-pointer',
+        href &&
+          'hover:border-brand-cyan/40 hover:shadow-lg hover:shadow-brand/5 cursor-pointer',
         className
       )}
     >
@@ -61,13 +97,19 @@ export function IntelKpi({ icon: Icon, label, value, sub, delta, href, className
       <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-2">
         {label}
       </div>
-      <div className="text-2xl md:text-3xl font-semibold brand-gradient-text">{value}</div>
+      <div className="text-2xl md:text-3xl font-semibold brand-gradient-text">
+        {value}
+      </div>
       {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
     </Card>
   );
 
   if (href) {
-    return <Link href={href} className="block">{card}</Link>;
+    return (
+      <Link href={href} className="block">
+        {card}
+      </Link>
+    );
   }
   return card;
 }

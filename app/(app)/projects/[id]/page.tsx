@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { canRunAI } from '@/lib/limits';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { STAGES, type HealthStatus } from '@/lib/types';
@@ -12,7 +13,10 @@ import { RiskPanel } from './risk-panel';
 export const dynamic = 'force-dynamic';
 
 const healthVariant: Record<HealthStatus, 'green' | 'amber' | 'red' | 'secondary'> = {
-  green: 'green', amber: 'amber', red: 'red', on_hold: 'secondary'
+  green: 'green',
+  amber: 'amber',
+  red: 'red',
+  on_hold: 'secondary',
 };
 
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
@@ -30,21 +34,46 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     .select('*')
     .eq('project_id', params.id);
 
-  const { data: billings } = await supabase.from('billing').select('*').eq('project_id', params.id);
-  const { data: collections } = await supabase.from('collections').select('*').eq('project_id', params.id);
+  const { data: billings } = await supabase
+    .from('billing')
+    .select('*')
+    .eq('project_id', params.id);
+
+  const { data: collections } = await supabase
+    .from('collections')
+    .select('*')
+    .eq('project_id', params.id);
+
   const { data: exceptions } = await supabase
-    .from('exceptions').select('*').eq('project_id', params.id).eq('status', 'open');
+    .from('exceptions')
+    .select('*')
+    .eq('project_id', params.id)
+    .eq('status', 'open');
+
   const { data: boqItems } = await supabase
-    .from('boq_items').select('*').eq('project_id', params.id).order('created_at', { ascending: false });
+    .from('boq_items')
+    .select('*')
+    .eq('project_id', params.id)
+    .order('created_at', { ascending: false });
+
+  // AI quota for this org (used + limit)
+  const aiLimitInfo = await canRunAI(supabase);
+  const aiUsage = aiLimitInfo.used;
+  const aiLimit = aiLimitInfo.limit;
 
   const totalBilled = (billings ?? []).reduce((s, b) => s + Number(b.amount), 0);
   const totalCollected = (collections ?? []).reduce((s, c) => s + Number(c.amount), 0);
   const unbilled = Math.max(totalBilled - totalCollected, 0);
-  const clientName = Array.isArray(project.clients) ? project.clients[0]?.name : project.clients?.name;
+  const clientName = Array.isArray(project.clients)
+    ? project.clients[0]?.name
+    : project.clients?.name;
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
-      <Link href="/projects" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-4">
+      <Link
+        href="/projects"
+        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-4"
+      >
         <ArrowLeft className="h-3 w-3" /> All Projects
       </Link>
 
@@ -61,20 +90,36 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4 bg-card/50">
-          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">Contract Value</div>
-          <div className="text-xl font-semibold text-brand">{formatMoney(Number(project.contract_value), project.currency)}</div>
+          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">
+            Contract Value
+          </div>
+          <div className="text-xl font-semibold text-brand">
+            {formatMoney(Number(project.contract_value), project.currency)}
+          </div>
         </Card>
         <Card className="p-4 bg-card/50">
-          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">Billed</div>
-          <div className="text-xl font-semibold">{formatMoney(totalBilled, project.currency)}</div>
+          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">
+            Billed
+          </div>
+          <div className="text-xl font-semibold">
+            {formatMoney(totalBilled, project.currency)}
+          </div>
         </Card>
         <Card className="p-4 bg-card/50">
-          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">Collected</div>
-          <div className="text-xl font-semibold">{formatMoney(totalCollected, project.currency)}</div>
+          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">
+            Collected
+          </div>
+          <div className="text-xl font-semibold">
+            {formatMoney(totalCollected, project.currency)}
+          </div>
         </Card>
         <Card className="p-4 bg-card/50">
-          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">Unbilled</div>
-          <div className="text-xl font-semibold text-amber-400">{formatMoney(unbilled, project.currency)}</div>
+          <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1">
+            Unbilled
+          </div>
+          <div className="text-xl font-semibold text-amber-400">
+            {formatMoney(unbilled, project.currency)}
+          </div>
         </Card>
       </div>
 
@@ -89,10 +134,14 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
               <div key={s.key} className="flex items-center shrink-0">
                 <div
                   className={`h-10 min-w-[68px] rounded-md px-2 flex items-center justify-center text-[10px] font-mono transition-colors ${
-                    active ? 'bg-brand text-brand-foreground'
-                      : status === 'done' ? 'bg-emerald-500/15 text-emerald-400'
-                      : status === 'blocked' ? 'bg-red-500/15 text-red-400'
-                      : status === 'in_progress' ? 'bg-blue-500/15 text-blue-400'
+                    active
+                      ? 'bg-brand text-brand-foreground'
+                      : status === 'done'
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : status === 'blocked'
+                      ? 'bg-red-500/15 text-red-400'
+                      : status === 'in_progress'
+                      ? 'bg-blue-500/15 text-blue-400'
                       : 'bg-muted text-muted-foreground'
                   }`}
                 >
@@ -110,8 +159,16 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           <h3 className="font-semibold mb-3">Description</h3>
           <p className="text-sm text-muted-foreground">{project.description ?? '—'}</p>
           <div className="grid grid-cols-2 gap-3 mt-4 text-xs font-mono text-muted-foreground">
-            <div><span className="opacity-60">START</span><br/>{shortDate(project.start_date)}</div>
-            <div><span className="opacity-60">END</span><br/>{shortDate(project.end_date)}</div>
+            <div>
+              <span className="opacity-60">START</span>
+              <br />
+              {shortDate(project.start_date)}
+            </div>
+            <div>
+              <span className="opacity-60">END</span>
+              <br />
+              {shortDate(project.end_date)}
+            </div>
           </div>
         </Card>
 
@@ -123,7 +180,16 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             <div className="space-y-2">
               {exceptions!.map((e: any) => (
                 <div key={e.id} className="text-xs">
-                  <Badge variant={e.severity === 'critical' ? 'red' : e.severity === 'high' ? 'amber' : 'outline'} className="text-[9px]">
+                  <Badge
+                    variant={
+                      e.severity === 'critical'
+                        ? 'red'
+                        : e.severity === 'high'
+                        ? 'amber'
+                        : 'outline'
+                    }
+                    className="text-[9px]"
+                  >
                     {e.severity}
                   </Badge>
                   <div className="mt-1 leading-snug">{e.message}</div>
@@ -142,7 +208,9 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
               {billings!.map((b: any) => (
                 <div key={b.id} className="flex items-center justify-between text-xs">
                   <span className="font-mono text-muted-foreground">{b.invoice_no}</span>
-                  <span className="font-mono">{formatMoney(Number(b.amount), project.currency)}</span>
+                  <span className="font-mono">
+                    {formatMoney(Number(b.amount), project.currency)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -151,16 +219,19 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-  <div className="lg:col-span-2">
-    <BoqTab
-      projectId={project.id}
-      currency={project.currency}
-      initialItems={(boqItems ?? []) as any}
-      quota={{ used: aiUsage, limit: aiLimit }}
-    />
-  </div>
-  <RiskPanel projectId={project.id} quota={{ used: aiUsage, limit: aiLimit }} />
-</div>
-</div>
+        <div className="lg:col-span-2">
+          <BoqTab
+            projectId={project.id}
+            currency={project.currency}
+            initialItems={(boqItems ?? []) as any}
+            quota={{ used: aiUsage, limit: aiLimit }}
+          />
+        </div>
+        <RiskPanel
+          projectId={project.id}
+          quota={{ used: aiUsage, limit: aiLimit }}
+        />
+      </div>
+    </div>
   );
 }

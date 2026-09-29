@@ -243,7 +243,7 @@ export function StageDrawer({
               <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1 flex items-center gap-1">
                 <Calendar className="h-3 w-3" /> Entered
               </div>
-              <div className="text-sm">{shortDate(stageRow?.entered_at)}</div>
+              <div className="text-sm">{shortDate(stageRow?.entered_at ?? null)}</div>
             </div>
             <div className="rounded-md border border-border bg-card/40 p-3">
               <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase mb-1 flex items-center gap-1">
@@ -356,7 +356,7 @@ export function StageDrawer({
                 <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                   <span className="text-xs text-muted-foreground">
-                    Stage completed on {shortDate(stageRow?.completed_at)}
+                    Stage completed on {shortDate(stageRow?.completed_at ?? null)}
                   </span>
                 </div>
               )}

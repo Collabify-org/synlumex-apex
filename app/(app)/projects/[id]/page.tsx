@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import { BoqTab } from './boq-tab';
 import { getOrgPlan } from '@/lib/plan';
 import { RiskPanel } from './risk-panel';
+import { LifecycleBar } from './lifecycle-bar';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +31,35 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
   if (!project) notFound();
 
-  const { data: stages } = await supabase
+    const { data: stages } = await supabase
     .from('project_stages')
     .select('*')
     .eq('project_id', params.id);
+
+  // Fetch stage_events + actor names
+  const { data: stageEventsRaw } = await supabase
+    .from('stage_events')
+    .select('id, stage, event_type, actor_id, summary, evidence_url, created_at')
+    .eq('project_id', params.id)
+    .order('created_at', { ascending: false });
+
+  const stageEventActorIds = Array.from(
+    new Set((stageEventsRaw ?? []).map((e: any) => e.actor_id).filter(Boolean))
+  );
+  let stageEventActorMap = new Map<string, string>();
+  if (stageEventActorIds.length > 0) {
+    const { data: actors } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', stageEventActorIds);
+    for (const a of actors ?? []) {
+      stageEventActorMap.set(a.id, a.full_name ?? 'Unknown');
+    }
+  }
+  const stageEvents = (stageEventsRaw ?? []).map((e: any) => ({
+    ...e,
+    actor_name: e.actor_id ? stageEventActorMap.get(e.actor_id) ?? null : null,
+  }));
 
   const { data: billings } = await supabase
     .from('billing')
@@ -127,35 +153,15 @@ const aiLimit = aiLimitInfo.limit;
         </Card>
       </div>
 
-      <Card className="p-5 bg-card/50 mb-6">
+            <Card className="p-5 bg-card/50 mb-6">
         <h3 className="font-semibold mb-4">Lifecycle</h3>
-        <div className="flex items-center gap-1 overflow-x-auto pb-2">
-          {STAGES.map((s) => {
-            const row = stages?.find((x) => x.stage === s.key);
-            const status = row?.status ?? 'pending';
-            const active = project.current_stage === s.key;
-            return (
-              <div key={s.key} className="flex items-center shrink-0">
-                <div
-                  className={`h-10 min-w-[68px] rounded-md px-2 flex items-center justify-center text-[10px] font-mono transition-colors ${
-                    active
-                      ? 'bg-brand text-brand-foreground'
-                      : status === 'done'
-                      ? 'bg-emerald-500/15 text-emerald-400'
-                      : status === 'blocked'
-                      ? 'bg-red-500/15 text-red-400'
-                      : status === 'in_progress'
-                      ? 'bg-blue-500/15 text-blue-400'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <span className="font-semibold">{s.short}</span>
-                </div>
-                <div className="w-1 h-px bg-border" />
-              </div>
-            );
-          })}
-        </div>
+        <LifecycleBar
+          projectId={project.id}
+          currentStage={project.current_stage}
+          stages={(stages ?? []) as any}
+          events={stageEvents}
+          projectCurrency={project.currency}
+        />
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">

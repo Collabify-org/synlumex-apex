@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { extractBOQ } from '@/lib/ai/provider';
 import { createClient } from '@/lib/supabase/server';
+import { canRunAI } from '@/lib/limits';
 import { extractText, getDocumentProxy } from 'unpdf';
 
 export const runtime = 'nodejs';
@@ -15,6 +16,22 @@ export async function POST(req: Request) {
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     if (file.size > 10 * 1024 * 1024)
       return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 });
+
+    const supabase = await createClient();
+
+    // Enforce AI cap
+    const limit = await canRunAI(supabase);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        {
+          error: limit.reason ?? 'AI quota reached',
+          code: 'AI_LIMIT_REACHED',
+          used: limit.used,
+          limit: limit.limit,
+        },
+        { status: 403 }
+      );
+    }
 
     const arrayBuffer = await file.arrayBuffer();
 
@@ -39,13 +56,11 @@ export async function POST(req: Request) {
 
     const items = await extractBOQ(text);
 
-    const supabase = await createClient();
-
     // Track usage
     try {
       await supabase.from('usage_events').insert({
         event_type: 'ai_boq',
-        metadata: { items: items.length, source: 'pdf', file_size: file.size }
+        metadata: { items: items.length, source: 'pdf', file_size: file.size },
       });
     } catch {}
 
@@ -56,7 +71,7 @@ export async function POST(req: Request) {
         unit: i.unit,
         quantity: i.quantity,
         rate: i.rate,
-        source: 'ai_extracted'
+        source: 'ai_extracted',
       }));
       const { error } = await supabase.from('boq_items').insert(rows);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -65,7 +80,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       items,
       textLength: text.length,
-      preview: text.slice(0, 400)
+      preview: text.slice(0, 400),
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 });

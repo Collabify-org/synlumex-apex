@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getOrgPlan } from '@/lib/plan';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Plug, ArrowRight } from 'lucide-react';
 import { PlanGate } from '@/components/plan-gate';
 import {
   Settings as SettingsIcon,
@@ -425,7 +426,32 @@ export default async function SettingsPage() {
           </PlanGate>
         </div>
       </div>
-
+         {/* Integrations */}
+      <Card className="p-5 bg-card/50 mb-6 border-brand/20">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-lg brand-gradient flex items-center justify-center shrink-0">
+              <Plug className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Integrations</h3>
+              <p className="text-xs text-muted-foreground mt-0.5 max-w-lg leading-relaxed">
+                Connect Synlumex to Tally, Zoho Books, Slack, WhatsApp, Stripe,
+                Google Drive, and 8 more tools. Request access and our team will
+                set it up with you.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/settings/integrations"
+            className="inline-flex items-center gap-1.5 rounded-md brand-gradient text-white px-3 py-2 text-xs font-medium hover:opacity-90 shrink-0"
+          >
+            Open integrations
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      </Card>
+      
       {/* The Loop */}
       <Card className="p-5 bg-card/50 mb-6">
         <div className="flex items-center gap-2 mb-4">

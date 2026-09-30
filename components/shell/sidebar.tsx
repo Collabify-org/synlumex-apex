@@ -201,8 +201,8 @@ export function Sidebar({ profile, org }: Props) {
 
             {/* Links */}
             <div style={{ backgroundColor: '#0d1424' }}>
-              <Link
-                href="/settings"
+                <Link
+                href="/profile"
                 onClick={() => setMenuOpen(false)}
                 className="flex items-center gap-3 px-4 py-2 text-sm text-white hover:bg-slate-800 transition-colors"
               >

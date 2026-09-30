@@ -27,7 +27,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const impersonatingOrgId = (profile as any)?.impersonating_org_id;
 
   if (impersonatingOrgId) {
-    // Fetch the impersonated org
     const { data: impOrg } = await supabase
       .from('organizations')
       .select('*')
@@ -35,7 +34,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .single();
     org = impOrg;
   } else {
-    // Normal flow: user's own org
     const { data: membership } = await supabase
       .from('organization_members')
       .select('organization_id, role, organizations(*)')
@@ -51,9 +49,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {impersonatingOrgId && org && (
         <ImpersonationBanner orgName={org.name} />
       )}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <Sidebar profile={profile} org={org} />
-        <div className="flex-1 flex flex-col min-w-0 h-full">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           <Topbar />
           <main className="flex-1 overflow-y-auto min-h-0">
             {children}

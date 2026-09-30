@@ -134,9 +134,14 @@ export async function createTeamMember(payload: {
     });
 
     if (profileError) {
-      await admin.auth.admin.deleteUser(userId);
+      if (userId) await admin.auth.admin.deleteUser(userId);
       return { ok: false, error: `Profile creation failed: ${profileError.message}` };
     }
+  }
+
+  // Guard: userId must be resolved at this point
+  if (!userId) {
+    return { ok: false, error: 'Failed to resolve user id' };
   }
 
   // Add to org
@@ -148,7 +153,9 @@ export async function createTeamMember(payload: {
   });
 
   if (memberError) {
-    if (!existingProfile) await admin.auth.admin.deleteUser(userId);
+    if (!existingProfile && userId) {
+      await admin.auth.admin.deleteUser(userId);
+    }
     return { ok: false, error: `Failed to add to workspace: ${memberError.message}` };
   }
 

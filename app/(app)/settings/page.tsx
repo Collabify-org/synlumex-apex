@@ -1,8 +1,8 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getOrgPlan } from '@/lib/plan';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plug, ArrowRight } from 'lucide-react';
 import { PlanGate } from '@/components/plan-gate';
 import {
   Settings as SettingsIcon,
@@ -21,7 +21,9 @@ import {
   Server,
   Building2,
   FileText,
-  CreditCard
+  CreditCard,
+  Plug,
+  ArrowRight,
 } from 'lucide-react';
 import { timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -38,7 +40,6 @@ export default async function SettingsPage() {
     .single();
   const { data: settings } = await supabase.from('settings').select('*').single();
 
-  // Live plan + usage
   const orgPlan = await getOrgPlan(supabase);
 
   const { count: projectCount } = await supabase
@@ -59,7 +60,6 @@ export default async function SettingsPage() {
     .from('profiles')
     .select('*', { count: 'exact', head: true });
 
-  // AI usage this month
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
@@ -129,7 +129,6 @@ export default async function SettingsPage() {
             </div>
           </div>
 
-          {/* Usage bars */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <UsageBar
               icon={<FolderKanban className="h-3.5 w-3.5" />}
@@ -244,7 +243,7 @@ export default async function SettingsPage() {
         </div>
       </Card>
 
-      {/* ── Pro Features ── */}
+      {/* Pro Features */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Lock className="h-4 w-4 text-muted-foreground" />
@@ -315,7 +314,7 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      {/* ── Enterprise Features ── */}
+      {/* Enterprise Features */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Lock className="h-4 w-4 text-muted-foreground" />
@@ -426,7 +425,8 @@ export default async function SettingsPage() {
           </PlanGate>
         </div>
       </div>
-         {/* Integrations */}
+
+      {/* Integrations */}
       <Card className="p-5 bg-card/50 mb-6 border-brand/20">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -451,7 +451,7 @@ export default async function SettingsPage() {
           </Link>
         </div>
       </Card>
-      
+
       {/* The Loop */}
       <Card className="p-5 bg-card/50 mb-6">
         <div className="flex items-center gap-2 mb-4">
@@ -495,7 +495,7 @@ export default async function SettingsPage() {
   );
 }
 
-/* ── Sub-components ── */
+/* ---------- Sub-components ---------- */
 
 function UsageBar({
   icon,
@@ -562,12 +562,12 @@ function FeatureRow({
         <div className="flex items-center gap-2 shrink-0">
           <Badge variant="green" className="text-[10px]">Active</Badge>
           {linkTo && (
-            <a
+            <Link
               href={linkTo}
               className="text-xs text-brand-cyan hover:underline"
             >
               Open →
-            </a>
+            </Link>
           )}
         </div>
       </div>

@@ -1,33 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  Search, Bell, AlertTriangle, LogOut, User, CreditCard, Settings,
-  ChevronDown
-} from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import type { Profile } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { Search, Bell, AlertTriangle } from 'lucide-react';
 
-type Org = {
-  id: string;
-  name: string;
-  plan_id: string | null;
-  status: string;
-} | null;
-
-type Props = {
-  profile: Profile | null;
-  org?: Org;
-};
-
-export function Topbar({ profile, org }: Props) {
-  const router = useRouter();
-  const supabase = createClient();
+export function Topbar() {
   const [clock, setClock] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const tick = () => {
@@ -41,26 +18,8 @@ export function Topbar({ profile, org }: Props) {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    if (menuOpen) document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [menuOpen]);
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
-  }
-
-  const initial = profile?.full_name?.charAt(0)?.toUpperCase() ?? 'U';
-
   return (
-    <header className="h-14 shrink-0 border-b border-border bg-card/30 flex items-center px-6 gap-4 relative z-50">
+    <header className="h-14 shrink-0 border-b border-border bg-card/30 flex items-center px-6 gap-4 relative z-40">
       <button className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-brand-cyan/40 transition-colors min-w-[280px]">
         <Search className="h-3.5 w-3.5" />
         <span>Search…</span>
@@ -83,97 +42,6 @@ export function Topbar({ profile, org }: Props) {
         <span className="text-[10px] font-mono font-semibold tracking-widest text-white rounded px-2 py-1 brand-gradient brand-glow">
           LIVE
         </span>
-
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-md pl-1 pr-2 py-1 hover:bg-accent/40 transition-colors"
-          >
-            <div className="h-7 w-7 rounded-full brand-gradient flex items-center justify-center text-xs font-bold text-white">
-              {initial}
-            </div>
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-          </button>
-
-          {menuOpen && (
-            <div
-              className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-border overflow-hidden z-[100] shadow-2xl"
-              style={{ backgroundColor: '#0d1424' }}
-            >
-              <div
-                className="p-4 border-b border-border"
-                style={{ backgroundColor: '#0d1424' }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full brand-gradient flex items-center justify-center text-sm font-bold text-white">
-                    {initial}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold truncate text-foreground">
-                      {profile?.full_name ?? 'User'}
-                    </div>
-                    <div className="text-[10px] font-mono text-muted-foreground truncate">
-                      {profile?.email ?? ''}
-                    </div>
-                  </div>
-                </div>
-                {org && (
-                  <div className="mt-3 pt-3 border-t border-border/60">
-                    <div className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase mb-0.5">
-                      Workspace
-                    </div>
-                    <div className="text-xs font-medium text-foreground truncate">
-                      {org.name}
-                    </div>
-                    <div className="text-[10px] font-mono text-brand-cyan capitalize mt-0.5">
-                      {org.plan_id ?? 'no plan'} · {org.status}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="py-1" style={{ backgroundColor: '#0d1424' }}>
-                <Link
-                  href="/settings"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent/60 transition-colors text-foreground"
-                >
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  Profile
-                </Link>
-                <Link
-                  href="/account"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent/60 transition-colors text-foreground"
-                >
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  Billing & Plan
-                </Link>
-                <Link
-                  href="/settings"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent/60 transition-colors text-foreground"
-                >
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                  Settings
-                </Link>
-              </div>
-
-              <div
-                className="py-1 border-t border-border"
-                style={{ backgroundColor: '#0d1424' }}
-              >
-                <button
-                  onClick={signOut}
-                  className="flex items-center gap-3 px-4 py-2 text-sm w-full text-left hover:bg-destructive/10 text-destructive transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );

@@ -29,7 +29,7 @@ export default async function SecurityPage() {
   const org = (membership?.organizations as any) ?? null;
   const role = membership?.role ?? 'member';
   const canEdit = ['owner', 'admin'].includes(role);
-  const isEnterprise = orgPlan?.canUse('enforce_mfa') ?? false;
+  const isEnterprise = orgPlan?.canUse('sso_saml') ?? false;
 
   // Load recent security-related audit events
   let recentEvents: any[] = [];

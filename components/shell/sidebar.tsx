@@ -51,7 +51,6 @@ export function Sidebar({ profile, org }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -62,7 +61,6 @@ export function Sidebar({ profile, org }: Props) {
     return () => document.removeEventListener('mousedown', onClick);
   }, [menuOpen]);
 
-  // Close on route change
   useEffect(() => {
     setMenuOpen(false);
   }, [path]);
@@ -162,30 +160,36 @@ export function Sidebar({ profile, org }: Props) {
           />
         </button>
 
-        {/* Menu opens upward */}
+        {/* Menu opens upward — fixed solid dark background */}
         {menuOpen && (
-          <div className="absolute left-3 right-3 bottom-full mb-2 rounded-lg border border-border bg-popover shadow-2xl overflow-hidden z-50">
+          <div
+            className="absolute left-3 right-3 bottom-full mb-2 rounded-lg border border-slate-700 shadow-2xl overflow-hidden"
+            style={{ zIndex: 100, backgroundColor: '#0d1424' }}
+          >
             {/* User header */}
-            <div className="p-4 border-b border-border">
+            <div
+              className="p-4 border-b border-slate-700"
+              style={{ backgroundColor: '#0d1424' }}
+            >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full brand-gradient flex items-center justify-center text-sm font-bold text-white shrink-0">
                   {initial}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold truncate">
+                  <div className="text-sm font-semibold truncate text-white">
                     {profile?.full_name ?? 'User'}
                   </div>
-                  <div className="text-[10px] font-mono text-muted-foreground truncate">
+                  <div className="text-[10px] font-mono text-slate-400 truncate">
                     {profile?.email ?? ''}
                   </div>
                 </div>
               </div>
               {org && (
-                <div className="mt-3 pt-3 border-t border-border/60">
-                  <div className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase mb-0.5">
+                <div className="mt-3 pt-3 border-t border-slate-700">
+                  <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-0.5">
                     Workspace
                   </div>
-                  <div className="text-xs font-medium truncate">
+                  <div className="text-xs font-medium truncate text-white">
                     {org.name}
                   </div>
                   <div className="text-[10px] font-mono text-brand-cyan capitalize mt-0.5">
@@ -196,38 +200,41 @@ export function Sidebar({ profile, org }: Props) {
             </div>
 
             {/* Links */}
-            <div className="py-1">
+            <div style={{ backgroundColor: '#0d1424' }}>
               <Link
                 href="/settings"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent/60 transition-colors"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-white hover:bg-slate-800 transition-colors"
               >
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <User className="h-4 w-4 text-slate-400 shrink-0" />
                 <span className="truncate">Profile</span>
               </Link>
               <Link
                 href="/account"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent/60 transition-colors"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-white hover:bg-slate-800 transition-colors"
               >
-                <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
+                <CreditCard className="h-4 w-4 text-slate-400 shrink-0" />
                 <span className="truncate">Billing &amp; Plan</span>
               </Link>
               <Link
                 href="/settings"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-accent/60 transition-colors"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-white hover:bg-slate-800 transition-colors"
               >
-                <Settings className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Settings className="h-4 w-4 text-slate-400 shrink-0" />
                 <span className="truncate">Settings</span>
               </Link>
             </div>
 
             {/* Sign out */}
-            <div className="py-1 border-t border-border">
+            <div
+              className="border-t border-slate-700"
+              style={{ backgroundColor: '#0d1424' }}
+            >
               <button
                 onClick={signOut}
-                className="flex items-center gap-3 px-4 py-2 text-sm w-full text-left hover:bg-destructive/10 text-destructive transition-colors"
+                className="flex items-center gap-3 px-4 py-2 text-sm w-full text-left text-red-400 hover:bg-red-500/10 transition-colors"
               >
                 <LogOut className="h-4 w-4 shrink-0" />
                 Sign out

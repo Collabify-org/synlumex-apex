@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutGrid, FolderKanban, AlertTriangle, Banknote,
-  Sparkles, Bell, ScrollText, Settings
+  Sparkles, Bell, ScrollText, Settings, Plug
 } from 'lucide-react';
 import { Logo } from '@/components/brand/logo';
 import type { Profile } from '@/lib/types';
@@ -34,9 +34,10 @@ const NAV = {
     { href: '/reminders', label: 'Reminders', icon: Bell }
   ],
   SYSTEM: [
-    { href: '/audit', label: 'Audit Log', icon: ScrollText },
-    { href: '/settings', label: 'Settings', icon: Settings }
-  ]
+  { href: '/audit', label: 'Audit Log', icon: ScrollText },
+  { href: '/settings/integrations', label: 'Integrations', icon: Plug },
+  { href: '/settings', label: 'Settings', icon: Settings, exact: true }
+]
 };
 
 export function Sidebar({ profile, org }: Props) {
@@ -73,7 +74,9 @@ export function Sidebar({ profile, org }: Props) {
               {section}
             </div>
             {items.map((item) => {
-              const active = path === item.href || path.startsWith(item.href + '/');
+              const active = (item as any).exact
+  ? path === item.href
+  : path === item.href || path.startsWith(item.href + '/');
               const Icon = item.icon;
               return (
                 <Link

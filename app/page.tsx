@@ -222,7 +222,7 @@ export default function HomePage() {
             <Reveal delay={500}>
               <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-mono text-muted-foreground">
                 <div className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" /> Enterprise-grade security</div>
-                <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5" /> 14-day trial</div>
+                <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5" /> One job free. Real output. No timer.</div>
                 <div className="flex items-center gap-2"><Users className="h-3.5 w-3.5" /> Multi-tenant isolated</div>
                 <div className="flex items-center gap-2"><Zap className="h-3.5 w-3.5" /> AI-powered</div>
               </div>
